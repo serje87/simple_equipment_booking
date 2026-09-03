@@ -68,6 +68,8 @@ def initialize_database():
             );
         """)
         columns = {row["name"] for row in database.execute("PRAGMA table_info(equipment)")}
+        if "booked_at" not in columns:
+            database.execute("ALTER TABLE equipment ADD COLUMN booked_at TEXT")
         if "ip_or_hostname" not in columns:
             database.execute("ALTER TABLE equipment ADD COLUMN ip_or_hostname TEXT")
         if "rdp_enabled" not in columns:
@@ -192,6 +194,13 @@ class Handler(SimpleHTTPRequestHandler):
                             )
                         """, (equipment_id, name))
                     if cursor.rowcount != 1:
+                        current = database.execute(
+                            "SELECT booked_by_user_id FROM equipment WHERE id = ?",
+                            (equipment_id,),
+                        ).fetchone()
+                        if current is not None and current["booked_by_user_id"] is None:
+                            database.commit()
+                            return self.send_json({"ok": True, "alreadyAvailable": True})
                         database.rollback()
                         return self.send_json({"error": "Only the person who booked this equipment or an administrator can release it"}, HTTPStatus.FORBIDDEN)
                 else:

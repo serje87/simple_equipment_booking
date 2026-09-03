@@ -47,6 +47,25 @@ function closeDialog(dialog){
 }
 function accessTarget(value){const target=(value||"").trim();return /^[A-Za-z0-9._:-]+$/.test(target)?target:null}
 function uriTarget(target){return (target.match(/:/g)||[]).length>1?`[${target}]`:target}
+function bookingTimestamp(value){
+  if(typeof value!=="string"||!value)return null;
+  const normalized=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)?`${value.replace(" ","T")}Z`:value;
+  const timestamp=Date.parse(normalized);
+  return Number.isFinite(timestamp)?timestamp:null;
+}
+function formatBookingAge(timestamp){
+  const seconds=Math.max(0,Math.floor((Date.now()-timestamp)/1000));
+  if(seconds<60)return "just now";
+  if(seconds<3600){const minutes=Math.max(1,Math.round(seconds/60));return `${minutes} minute${minutes===1?"":"s"} ago`}
+  if(seconds<86400){const hours=Math.max(1,Math.round(seconds/3600));return `${hours} hour${hours===1?"":"s"} ago`}
+  const days=Math.max(1,Math.round(seconds/86400));return `${days} day${days===1?"":"s"} ago`;
+}
+function updateBookingAges(){
+  document.querySelectorAll("[data-booked-timestamp]").forEach(element=>{
+    const timestamp=Number(element.dataset.bookedTimestamp);
+    if(Number.isFinite(timestamp))element.textContent=formatBookingAge(timestamp);
+  });
+}
 function downloadRdp(item){
   const target=accessTarget(item.ipOrHostname);if(!target)return;
   const address=uriTarget(target);const contents=`full address:s:${address}\r\nprompt for credentials:i:1\r\n`;
@@ -73,12 +92,25 @@ function render(){
     .filter(item=>`${item.name} ${item.description}`.toLocaleLowerCase().includes(query))
     .sort((a,b)=>a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase()));
   if(!items.length){elements.equipment.innerHTML='<div class="empty"><strong>No equipment found</strong><br>Try a different name or description.</div>';return}
-  elements.equipment.innerHTML=items.map(item=>{const occupied=Boolean(item.bookedByName);const target=accessTarget(item.ipOrHostname);const linkTarget=target?uriTarget(target):null;const access=target&&(item.rdpEnabled||item.sshEnabled)?`<div class="access-links">${item.rdpEnabled?(state.rdpLinkMode==="protocol"?`<a href="rdp://${linkTarget}">RDP</a>`:`<button type="button" data-connect="rdp" data-connect-id="${item.id}">RDP</button>`):''}${item.sshEnabled?`<a href="ssh://${linkTarget}">SSH</a>`:''}</div>`:'';return `<article class="card"><div class="card-top"><span class="equipment-icon">□</span><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span></div><h3>${escapeHtml(item.name)}</h3><p class="description">${escapeHtml(item.description)}</p>${target?`<p class="address"><span>Address</span><code>${escapeHtml(target)}</code></p>`:''}${occupied?`<p class="owner">Booked by: <strong>${escapeHtml(item.bookedByName)}${item.isMine?' (you)':''}</strong></p>`:''}${access}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}">${!occupied?'Book':item.isMine?'Release':'Release as administrator'}</button></article>`}).join("");
+  elements.equipment.innerHTML=items.map(item=>{
+    const occupied=Boolean(item.bookedByName);
+    const target=accessTarget(item.ipOrHostname);
+    const linkTarget=target?uriTarget(target):null;
+    const access=target&&(item.rdpEnabled||item.sshEnabled)
+      ?`<div class="access-links">${item.rdpEnabled?(state.rdpLinkMode==="protocol"?`<a href="rdp://${linkTarget}">RDP</a>`:`<button type="button" data-connect="rdp" data-connect-id="${item.id}">RDP</button>`):''}${item.sshEnabled?`<a href="ssh://${linkTarget}">SSH</a>`:''}</div>`
+      :'';
+    const timestamp=occupied?bookingTimestamp(item.bookedAt):null;
+    const bookingMeta=occupied
+      ?`<div class="booking-meta"><p class="owner">Booked by: <strong>${escapeHtml(item.bookedByName)}${item.isMine?' (you)':''}</strong></p><p class="booked-age"${timestamp===null?'':` data-booked-timestamp="${timestamp}"`}>${timestamp===null?'Booked recently':formatBookingAge(timestamp)}</p></div>`
+      :'<div class="booking-meta booking-meta-empty" aria-hidden="true"><p class="owner">Not booked</p><p class="booked-age">Booked just now</p></div>';
+    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}</h3><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span></div><p class="description">${escapeHtml(item.description)}</p>${target?`<p class="address"><span>Address</span><code>${escapeHtml(target)}</code></p>`:''}${bookingMeta}${access}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}">${!occupied?'Book':item.isMine?'Release':'Release as administrator'}</button></article>`;
+  }).join("");
+  updateBookingAges();
 }
 
 async function act(item,action,adminCode=""){
   showError();const button=document.querySelector(`[data-id="${item.id}"]`);if(button)button.disabled=true;
-  try{const response=await fetch("/api/equipment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,equipmentId:item.id,userToken:state.userToken,userName:state.userName,adminCode})});const data=await response.json();if(!response.ok)throw new Error(data.error||"The operation could not be completed");closeDialog(elements.adminDialog);elements.adminCode.value="";await load()}catch(error){showError(error.message);if(button)button.disabled=false}
+  try{const response=await fetch("/api/equipment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,equipmentId:item.id,userToken:state.userToken,userName:state.userName,adminCode})});const data=await response.json();if(!response.ok)throw new Error(data.error||"The operation could not be completed");closeDialog(elements.adminDialog);elements.adminCode.value="";await load()}catch(error){if(button)button.disabled=false;await load();showError(error.message)}
 }
 
 elements.equipment.addEventListener("click",event=>{const connectButton=event.target.closest('button[data-connect="rdp"]');if(connectButton){const item=state.items.find(value=>value.id===Number(connectButton.dataset.connectId));if(item)downloadRdp(item);return}const button=event.target.closest("button[data-id]");if(!button)return;const item=state.items.find(value=>value.id===Number(button.dataset.id));if(!item)return;if(button.dataset.action==="book"&&!state.userName){openDialog(elements.nameDialog);elements.nameInput.focus();return}if(button.dataset.action==="admin"){state.adminItem=item;elements.adminDescription.textContent=`Enter the admin code to release “${item.name}”.`;openDialog(elements.adminDialog);elements.adminCode.focus()}else act(item,button.dataset.action)});
@@ -90,3 +122,5 @@ elements.adminForm.addEventListener("submit",event=>{event.preventDefault();if(s
 
 load();
 if(state.userName){elements.userButton.textContent=`${state.userName} · Switch`;elements.userButton.hidden=false}else{openDialog(elements.nameDialog)}
+setInterval(updateBookingAges,60000);
+setInterval(()=>{if(!document.hidden)load()},15000);
