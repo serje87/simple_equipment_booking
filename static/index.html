@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="View equipment availability and manage bookings.">
+  <title>Equipment Booking</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header><div class="header-inner"><div class="brand-mark">□</div><div><h1 id="page-title">Equipment Booking</h1><p>Availability and booking</p></div><button id="user-button" class="user-button" hidden></button></div></header>
+  <main>
+    <section class="stats"><div class="stat"><span>Total</span><strong id="total">0</strong></div><div class="stat available"><span>Available</span><strong id="available">0</strong></div><div class="stat booked"><span>Booked</span><strong id="booked">0</strong></div></section>
+    <div class="section-head"><h2>All equipment</h2><button id="refresh" class="text-button">↻ Refresh</button></div>
+    <label class="search"><span>⌕</span><input id="filter" type="search" placeholder="Filter by name or description…" autocomplete="off"></label>
+    <div id="error" class="error" hidden></div>
+    <section id="equipment" class="equipment-grid" aria-live="polite"><div class="loading">Loading…</div></section>
+  </main>
+
+  <dialog id="name-dialog"><form id="name-form" method="dialog"><button type="button" id="name-cancel" class="dialog-close" aria-label="Close and continue without signing in">×</button><h2>What is your name?</h2><p>Your name will be shown to colleagues next to equipment you book.</p><input id="name-input" placeholder="For example, Alex" maxlength="60" required autofocus><div class="dialog-actions"><button class="primary">Continue</button></div></form></dialog>
+  <dialog id="admin-dialog"><form id="admin-form" method="dialog"><h2>Release as administrator</h2><p id="admin-description"></p><input id="admin-code" type="password" placeholder="Admin code" required><div class="dialog-actions"><button type="button" id="admin-cancel" class="secondary">Cancel</button><button class="primary">Release</button></div></form></dialog>
+  <script src="/app.js" defer></script>
+</body>
+</html>
