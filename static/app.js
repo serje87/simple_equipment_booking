@@ -96,14 +96,17 @@ function render(){
     const occupied=Boolean(item.bookedByName);
     const target=accessTarget(item.ipOrHostname);
     const linkTarget=target?uriTarget(target):null;
+    const titleAddress=target&&item.name.trim().toLocaleLowerCase()!==target.toLocaleLowerCase()
+      ?`<span class="title-address"> · <code>${escapeHtml(target)}</code></span>`
+      :'';
     const access=target&&(item.rdpEnabled||item.sshEnabled)
-      ?`<div class="access-links">${item.rdpEnabled?(state.rdpLinkMode==="protocol"?`<a href="rdp://${linkTarget}">RDP</a>`:`<button type="button" data-connect="rdp" data-connect-id="${item.id}">RDP</button>`):''}${item.sshEnabled?`<a href="ssh://${linkTarget}">SSH</a>`:''}</div>`
+      ?`${item.rdpEnabled?(state.rdpLinkMode==="protocol"?`<a href="rdp://${linkTarget}">RDP</a>`:`<button type="button" data-connect="rdp" data-connect-id="${item.id}">RDP</button>`):''}${item.sshEnabled?`<a href="ssh://${linkTarget}">SSH</a>`:''}`
       :'';
     const timestamp=occupied?bookingTimestamp(item.bookedAt):null;
     const bookingMeta=occupied
-      ?`<div class="booking-meta"><p class="owner">Booked by: <strong>${escapeHtml(item.bookedByName)}${item.isMine?' (you)':''}</strong></p><p class="booked-age"${timestamp===null?'':` data-booked-timestamp="${timestamp}"`}>${timestamp===null?'Booked recently':formatBookingAge(timestamp)}</p></div>`
-      :'<div class="booking-meta booking-meta-empty" aria-hidden="true"><p class="owner">Not booked</p><p class="booked-age">Booked just now</p></div>';
-    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}</h3><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span></div><p class="description">${escapeHtml(item.description)}</p>${target?`<p class="address"><span>Address</span><code>${escapeHtml(target)}</code></p>`:''}${bookingMeta}${access}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}">${!occupied?'Book':item.isMine?'Release':'Release as administrator'}</button></article>`;
+      ?`<div class="booking-meta"><p class="owner"><span class="owner-who">Booked by: <strong>${escapeHtml(item.bookedByName)}${item.isMine?' (you)':''}</strong></span><span class="booking-separator" aria-hidden="true">·</span><span class="booked-age"${timestamp===null?'':` data-booked-timestamp="${timestamp}"`}>${timestamp===null?'recently':formatBookingAge(timestamp)}</span></p></div>`
+      :'<div class="booking-meta booking-meta-empty" aria-hidden="true"><p class="owner"><span class="owner-who">Not booked</span><span class="booking-separator">·</span><span class="booked-age">just now</span></p></div>';
+    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}${titleAddress}</h3><div class="card-tools"><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span>${access}</div></div><p class="description">${escapeHtml(item.description)}</p>${bookingMeta}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}">${!occupied?'Book':item.isMine?'Release':'Release as administrator'}</button></article>`;
   }).join("");
   updateBookingAges();
 }

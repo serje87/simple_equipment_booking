@@ -68,3 +68,6 @@ traffic to `127.0.0.1:8080`.
 Ownership is matched by the exact user-name string. Entering the same name again
 allows the user to release bookings made under that name. A different name
 cannot release them unless the administrator code is supplied.
+
+The booking time is stored in the `equipment.booked_at` column. The page shows
+it as a quiet approximate age and refreshes equipment status every 15 seconds.
