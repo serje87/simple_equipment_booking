@@ -14,9 +14,6 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
 DB_PATH = DATA_DIR / "equipment.db"
 STATIC_DIR = BASE_DIR / "static"
 
-# This title is shown in the page header and in the browser tab.
-PAGE_TITLE = "Equipment Booking"
-
 # Change this to "protocol" to open rdp:// links through an installed handler.
 # Keep "download" to generate a standard .rdp file in the browser.
 RDP_LINK_MODE = "download"
@@ -76,6 +73,10 @@ def initialize_database():
             database.execute("ALTER TABLE equipment ADD COLUMN rdp_enabled INTEGER NOT NULL DEFAULT 0")
         if "ssh_enabled" not in columns:
             database.execute("ALTER TABLE equipment ADD COLUMN ssh_enabled INTEGER NOT NULL DEFAULT 0")
+        database.execute("""
+            INSERT OR IGNORE INTO app_meta(key, value)
+            VALUES ('page_title', 'Equipment Booking')
+        """)
         seeded = database.execute("SELECT 1 FROM app_meta WHERE key = 'initial_seed'").fetchone()
         if not seeded:
             database.executemany(
@@ -130,6 +131,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/equipment":
             current_name = self.headers.get("X-User-Name", "").strip()
             with connect() as database:
+                page_title = database.execute(
+                    "SELECT value FROM app_meta WHERE key = 'page_title'"
+                ).fetchone()["value"]
                 rows = database.execute("""
                     SELECT e.id, e.name, e.description, e.ip_or_hostname,
                            e.rdp_enabled, e.ssh_enabled, e.booked_at,
@@ -138,7 +142,7 @@ class Handler(SimpleHTTPRequestHandler):
                     LEFT JOIN users u ON u.id = e.booked_by_user_id
                     ORDER BY e.name COLLATE NOCASE
                 """).fetchall()
-            return self.send_json({"pageTitle": PAGE_TITLE, "rdpLinkMode": RDP_LINK_MODE, "equipment": [{
+            return self.send_json({"pageTitle": page_title, "rdpLinkMode": RDP_LINK_MODE, "equipment": [{
                 "id": row["id"],
                 "name": row["name"],
                 "description": row["description"],

@@ -21,14 +21,15 @@ startup and stored in `data/admin_code.txt`.
 
 ## Page title
 
-Change this setting near the top of `app.py`:
+The title is stored in the SQLite database. Show or change it with:
 
-```python
-PAGE_TITLE = "Lab Equipment"
+```bash
+python3 manage.py title
+python3 manage.py title "Lab Equipment"
 ```
 
-The value is used both in the page header and in the browser tab. Restart the
-application after changing it.
+The value is used both in the page header and in the browser tab. The running
+application picks up the new value automatically.
 
 ## Equipment management
 

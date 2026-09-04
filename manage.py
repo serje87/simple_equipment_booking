@@ -6,9 +6,10 @@ from pathlib import Path
 
 DB_PATH = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent / "data")) / "equipment.db"
 
-parser = argparse.ArgumentParser(description="Manage equipment records")
+parser = argparse.ArgumentParser(description="Manage application settings and equipment records")
 sub = parser.add_subparsers(dest="command", required=True)
 sub.add_parser("list")
+title = sub.add_parser("title"); title.add_argument("value", nargs="?")
 add = sub.add_parser("add"); add.add_argument("name"); add.add_argument("description"); add.add_argument("--address"); add.add_argument("--rdp", action="store_true"); add.add_argument("--ssh", action="store_true")
 update = sub.add_parser("update"); update.add_argument("id", type=int); update.add_argument("--name"); update.add_argument("--description"); update.add_argument("--address"); update.add_argument("--clear-address", action="store_true"); update.add_argument("--rdp", choices=("on", "off")); update.add_argument("--ssh", choices=("on", "off"))
 delete = sub.add_parser("delete"); delete.add_argument("id", type=int)
@@ -20,6 +21,17 @@ if args.command == "list":
     for row in database.execute("SELECT id, name, description, ip_or_hostname, rdp_enabled, ssh_enabled, booked_by_user_id FROM equipment ORDER BY name"):
         protocols = ",".join(name for name, enabled in (("RDP", row["rdp_enabled"]), ("SSH", row["ssh_enabled"])) if enabled) or "none"
         print(f"{row['id']:>3}  {row['name']}  |  {row['description']}  |  {row['ip_or_hostname'] or '-'}  |  {protocols}  |  {'booked' if row['booked_by_user_id'] else 'available'}")
+elif args.command == "title":
+    if args.value is None:
+        row = database.execute("SELECT value FROM app_meta WHERE key = 'page_title'").fetchone()
+        print(row["value"] if row else "")
+    else:
+        value = args.value.strip()
+        if not value: parser.error("title must not be empty")
+        database.execute("""
+            INSERT INTO app_meta(key, value) VALUES ('page_title', ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (value,)); database.commit()
 elif args.command == "add":
     database.execute("INSERT INTO equipment(name, description, ip_or_hostname, rdp_enabled, ssh_enabled) VALUES (?, ?, ?, ?, ?)", (args.name, args.description, args.address, int(args.rdp), int(args.ssh))); database.commit()
 elif args.command == "update":

@@ -9,9 +9,8 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header><div class="header-inner"><div><h1 id="page-title">Equipment Booking</h1><p>Availability and booking</p></div><button id="user-button" class="user-button" hidden></button></div></header>
+  <header><div class="header-inner"><div class="header-title"><h1 id="page-title">Equipment Booking</h1><p>Availability and booking</p></div><section class="header-stats" aria-label="Equipment status"><div class="header-stat"><span>Total</span><strong id="total">0</strong></div><div class="header-stat available"><span>Available</span><strong id="available">0</strong></div><div class="header-stat booked"><span>Booked</span><strong id="booked">0</strong></div></section><button id="user-button" class="user-button">Log in</button></div></header>
   <main>
-    <section class="stats"><div class="stat"><span>Total</span><strong id="total">0</strong></div><div class="stat available"><span>Available</span><strong id="available">0</strong></div><div class="stat booked"><span>Booked</span><strong id="booked">0</strong></div></section>
     <div class="section-head"><h2>All equipment</h2><button id="refresh" class="text-button">↻ Refresh</button></div>
     <label class="search"><span>⌕</span><input id="filter" type="search" placeholder="Filter by name or description…" autocomplete="off"></label>
     <div id="error" class="error" hidden></div>

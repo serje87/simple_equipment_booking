@@ -34,6 +34,10 @@ const elements = {
 
 function escapeHtml(value){const node=document.createElement("div");node.textContent=value;return node.innerHTML}
 function showError(message=""){elements.error.textContent=message;elements.error.hidden=!message}
+function updateUserButton(){
+  elements.userButton.textContent=state.userName||"Log in";
+  elements.userButton.setAttribute("aria-label",state.userName?`Current user: ${state.userName}. Click to change user.`:"Log in");
+}
 function openDialog(dialog){
   if(!dialog)return;
   try{if(typeof dialog.showModal==="function"){if(!dialog.open)dialog.showModal();return}}catch(error){}
@@ -106,7 +110,9 @@ function render(){
     const bookingMeta=occupied
       ?`<div class="booking-meta"><p class="owner"><span class="owner-who">Booked by: <strong>${escapeHtml(item.bookedByName)}${item.isMine?' (you)':''}</strong></span><span class="booking-separator" aria-hidden="true">·</span><span class="booked-age"${timestamp===null?'':` data-booked-timestamp="${timestamp}"`}>${timestamp===null?'recently':formatBookingAge(timestamp)}</span></p></div>`
       :'<div class="booking-meta booking-meta-empty" aria-hidden="true"><p class="owner"><span class="owner-who">Not booked</span><span class="booking-separator">·</span><span class="booked-age">just now</span></p></div>';
-    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}${titleAddress}</h3><div class="card-tools"><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span>${access}</div></div><p class="description">${escapeHtml(item.description)}</p>${bookingMeta}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}">${!occupied?'Book':item.isMine?'Release':'Release as administrator'}</button></article>`;
+    const buttonLabel=!occupied?'Book':item.isMine?'Release':'Booked';
+    const adminLabel=occupied&&!item.isMine?` aria-label="Booked. Release ${escapeHtml(item.name)} as administrator"`:'';
+    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}${titleAddress}</h3><div class="card-tools"><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span>${access}</div></div><p class="description">${escapeHtml(item.description)}</p>${bookingMeta}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}"${adminLabel}>${buttonLabel}</button></article>`;
   }).join("");
   updateBookingAges();
 }
@@ -118,12 +124,12 @@ async function act(item,action,adminCode=""){
 
 elements.equipment.addEventListener("click",event=>{const connectButton=event.target.closest('button[data-connect="rdp"]');if(connectButton){const item=state.items.find(value=>value.id===Number(connectButton.dataset.connectId));if(item)downloadRdp(item);return}const button=event.target.closest("button[data-id]");if(!button)return;const item=state.items.find(value=>value.id===Number(button.dataset.id));if(!item)return;if(button.dataset.action==="book"&&!state.userName){openDialog(elements.nameDialog);elements.nameInput.focus();return}if(button.dataset.action==="admin"){state.adminItem=item;elements.adminDescription.textContent=`Enter the admin code to release “${item.name}”.`;openDialog(elements.adminDialog);elements.adminCode.focus()}else act(item,button.dataset.action)});
 elements.filter.addEventListener("input",render);elements.refresh.addEventListener("click",load);
-elements.userButton.addEventListener("click",()=>{state.userName="";state.userToken=createUserToken();localStorage.removeItem("equipment-user-name");localStorage.setItem("equipment-user-token",state.userToken);elements.userButton.hidden=true;elements.nameInput.value="";openDialog(elements.nameDialog);elements.nameInput.focus()});
-elements.nameForm.addEventListener("submit",event=>{event.preventDefault();const name=elements.nameInput.value.trim();if(!name)return;state.userName=name;localStorage.setItem("equipment-user-name",name);elements.userButton.textContent=`${name} · Switch`;elements.userButton.hidden=false;closeDialog(elements.nameDialog);load()});
+elements.userButton.addEventListener("click",()=>{elements.nameInput.value=state.userName;openDialog(elements.nameDialog);elements.nameInput.focus();elements.nameInput.select()});
+elements.nameForm.addEventListener("submit",event=>{event.preventDefault();const name=elements.nameInput.value.trim();if(!name)return;if(name!==state.userName){state.userToken=createUserToken();localStorage.setItem("equipment-user-token",state.userToken)}state.userName=name;localStorage.setItem("equipment-user-name",name);updateUserButton();closeDialog(elements.nameDialog);load()});
 elements.nameCancel.addEventListener("click",()=>closeDialog(elements.nameDialog));
 elements.adminForm.addEventListener("submit",event=>{event.preventDefault();if(state.adminItem)act(state.adminItem,"release",elements.adminCode.value)});elements.adminCancel.addEventListener("click",()=>closeDialog(elements.adminDialog));
 
 load();
-if(state.userName){elements.userButton.textContent=`${state.userName} · Switch`;elements.userButton.hidden=false}else{openDialog(elements.nameDialog)}
+updateUserButton();
 setInterval(updateBookingAges,60000);
 setInterval(()=>{if(!document.hidden)load()},15000);
