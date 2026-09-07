@@ -51,6 +51,7 @@ function closeDialog(dialog){
 }
 function accessTarget(value){const target=(value||"").trim();return /^[A-Za-z0-9._:-]+$/.test(target)?target:null}
 function uriTarget(target){return (target.match(/:/g)||[]).length>1?`[${target}]`:target}
+function connectionTarget(item){const address=(item.ipOrHostname||"").trim();return accessTarget(address||item.name)}
 function bookingTimestamp(value){
   if(typeof value!=="string"||!value)return null;
   const normalized=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)?`${value.replace(" ","T")}Z`:value;
@@ -71,7 +72,7 @@ function updateBookingAges(){
   });
 }
 function downloadRdp(item){
-  const target=accessTarget(item.ipOrHostname);if(!target)return;
+  const target=connectionTarget(item);if(!target)return;
   const address=uriTarget(target);const contents=`full address:s:${address}\r\nprompt for credentials:i:1\r\n`;
   const url=URL.createObjectURL(new Blob([contents],{type:"application/x-rdp"}));const link=document.createElement("a");
   link.href=url;link.download=`${item.name.replace(/[^A-Za-z0-9._-]+/g,"-").replace(/^-|-$/g,"")||"equipment"}.rdp`;link.click();URL.revokeObjectURL(url);
@@ -98,7 +99,7 @@ function render(){
   if(!items.length){elements.equipment.innerHTML='<div class="empty"><strong>No equipment found</strong><br>Try a different name or description.</div>';return}
   elements.equipment.innerHTML=items.map(item=>{
     const occupied=Boolean(item.bookedByName);
-    const target=accessTarget(item.ipOrHostname);
+    const target=connectionTarget(item);
     const linkTarget=target?uriTarget(target):null;
     const titleAddress=target&&item.name.trim().toLocaleLowerCase()!==target.toLocaleLowerCase()
       ?`<span class="title-address"> · <code>${escapeHtml(target)}</code></span>`
@@ -112,7 +113,7 @@ function render(){
       :'<div class="booking-meta booking-meta-empty" aria-hidden="true"><p class="owner"><span class="owner-who">Not booked</span><span class="booking-separator">·</span><span class="booked-age">just now</span></p></div>';
     const buttonLabel=!occupied?'Book':item.isMine?'Release':'Booked';
     const adminLabel=occupied&&!item.isMine?` aria-label="Booked. Release ${escapeHtml(item.name)} as administrator"`:'';
-    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}${titleAddress}</h3><div class="card-tools"><span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span>${access}</div></div><p class="description">${escapeHtml(item.description)}</p>${bookingMeta}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}"${adminLabel}>${buttonLabel}</button></article>`;
+    return `<article class="card"><div class="card-top"><h3>${escapeHtml(item.name)}${titleAddress}</h3><div class="card-tools">${access}<span class="badge ${occupied?'busy':'free'}">${occupied?'Booked':'Available'}</span></div></div><p class="description">${escapeHtml(item.description)}</p>${bookingMeta}<button class="${!occupied?'primary':item.isMine?'':'admin'}" data-id="${item.id}" data-action="${!occupied?'book':item.isMine?'release':'admin'}"${adminLabel}>${buttonLabel}</button></article>`;
   }).join("");
   updateBookingAges();
 }
